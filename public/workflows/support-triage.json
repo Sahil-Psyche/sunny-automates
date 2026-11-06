@@ -1,0 +1,249 @@
+{
+  "id": "rs2ryvGVBe4cLP6y",
+  "name": "First-Response Support Bot",
+  "active": false,
+  "isArchived": false,
+  "versionId": "b0e0b6e2-6b9d-402d-9cc8-9f064ea2b91a",
+  "activeVersionId": null,
+  "triggerCount": 0,
+  "nodeCount": 7,
+  "createdAt": "2026-11-06T14:08:03.433Z",
+  "updatedAt": "2026-11-06T14:08:21.758Z",
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": [],
+  "parentFolderId": null,
+  "description": "Answer FAQs on WhatsApp, hand off to human when needed.",
+  "scopes": [
+    "execution:delete",
+    "execution:list",
+    "execution:read",
+    "execution:reveal",
+    "workflow:create",
+    "workflow:delete",
+    "workflow:disableRedaction",
+    "workflow:enableRedaction",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:export",
+    "workflow:import",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:unshare",
+    "workflow:update"
+  ],
+  "canExecute": true,
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Support Agent": {
+      "main": [
+        [
+          {
+            "node": "Needs Handoff?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Support Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Handoff?": {
+      "main": [
+        [
+          {
+            "node": "Handoff to Human (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply on WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "id": "2d216281-f7b2-45eb-82e2-879c6b52ed4e",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        112
+      ],
+      "parameters": {
+        "updates": [
+          "messages"
+        ]
+      },
+      "webhookId": "6b1dbd19-9452-4577-9f90-f7a0658845c5"
+    },
+    {
+      "id": "576c6ba8-2fe4-42cb-98c6-fbd595eb1d27",
+      "name": "Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        112
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.entry[0].changes[0].value.messages[0].text.body }}",
+        "hasOutputParser": false,
+        "options": {
+          "systemMessage": "You are a friendly first-response support bot for a small business. Answer FAQs about products, pricing, timings, and contact. If the question is complex, sensitive, or requires a human, reply starting with HANDOFF: followed by a short summary. Otherwise answer helpfully and concisely. Keep replies under 80 words."
+        }
+      }
+    },
+    {
+      "id": "69abf90a-955e-4b11-b7e9-9f9f1c319be0",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        336
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      }
+    },
+    {
+      "id": "2f6e118e-ae75-4983-ba79-d25ee144f2b3",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        368,
+        336
+      ],
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.entry[0].changes[0].value.messages[0].from }}",
+        "contextWindowLength": 8
+      }
+    },
+    {
+      "id": "49e23c18-2a55-4908-8620-2cced457d7e5",
+      "name": "Needs Handoff?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        576,
+        112
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              },
+              "rightValue": "HANDOFF"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "34827669-b890-4805-b64d-6b88cd13ddc9",
+      "name": "Handoff to Human (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        16
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "OWNER_CHAT_ID",
+        "text": "={{ \"Handoff needed. Customer: \" + $json.body.entry[0].changes[0].value.messages[0].from + \"\\nAI summary: \" + $json.output }}"
+      },
+      "webhookId": "a15b9c10-b465-4954-ae81-67321111e2c2"
+    },
+    {
+      "id": "56ce7668-8916-468c-9225-22314efe3989",
+      "name": "Reply on WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        208
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.body.entry[0].changes[0].value.messages[0].from }}",
+        "messageType": "text",
+        "textBody": "={{ $json.output }}"
+      },
+      "webhookId": "60a8a8b0-29c6-4f54-842b-bb2a3d90e0ba"
+    }
+  ],
+  "nodeGroups": [],
+  "activeVersion": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  }
+}

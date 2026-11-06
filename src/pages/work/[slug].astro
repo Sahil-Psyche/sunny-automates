@@ -91,6 +91,13 @@ const figLabel = `FIG. ${String(Number(project.index) + 1).padStart(2, '0')} —
             Screenshot of the actual workflow on my n8n instance. Drop the export at
             <code>{project.n8nImage}</code> to show it here.
           </p>
+          {project.n8nUrl && (
+            <p class="case-n8n-note">
+              <a class="artifact-link" href={project.n8nUrl} target="_blank" rel="noopener">
+                Open the live workflow in n8n ↗
+              </a>
+            </p>
+          )}
         </div>
         <figure class="n8n-shot">
           <img
@@ -168,10 +175,10 @@ const figLabel = `FIG. ${String(Number(project.index) + 1).padStart(2, '0')} —
           <p class="stack-note">Architecture documented end-to-end. Ask for a walkthrough.</p>
         </div>
 
-        {project.slug === 'inbox-triage' && (
+        {true && (
           <div class="artifact-block">
             <p class="stack-label">Artifact</p>
-            <a class="artifact-link" href="/workflows/inbox-triage.json" download>
+            <a class="artifact-link" href={`/workflows/${project.slug}.json`} download>
               Download redacted architecture (JSON) ↗
             </a>
             <p class="stack-note">

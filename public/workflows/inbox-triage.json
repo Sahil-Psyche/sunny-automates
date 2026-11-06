@@ -1,36 +1,420 @@
 {
-  "name": "inbox.triage",
-  "version": "1.0",
-  "status": "reference architecture (redacted)",
-  "note": "Redacted export of the documented architecture. Credentials, account IDs and internal URLs removed. Contact sunnyautomates for a full walkthrough or a sanitized n8n import.",
-  "trigger": "Gmail trigger on a dedicated label (self-sent mail ignored)",
-  "stack": ["n8n", "Gmail", "OpenAI", "Telegram", "Google Sheets"],
+  "id": "95leKzDjRkJti2q1",
+  "name": "AI Email Triage and Reply Drafts",
+  "active": false,
+  "isArchived": false,
+  "versionId": "83ad48d0-14db-47a8-9d92-13b2a48bae3f",
+  "activeVersionId": null,
+  "triggerCount": 0,
+  "nodeCount": 8,
+  "createdAt": "2026-11-06T14:07:46.970Z",
+  "updatedAt": "2026-11-06T14:07:46.970Z",
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": [],
+  "parentFolderId": null,
+  "description": "Triage inbox with AI, draft replies for routine emails, alert owner for urgent.",
+  "scopes": [
+    "execution:delete",
+    "execution:list",
+    "execution:read",
+    "execution:reveal",
+    "workflow:create",
+    "workflow:delete",
+    "workflow:disableRedaction",
+    "workflow:enableRedaction",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:export",
+    "workflow:import",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:unshare",
+    "workflow:update"
+  ],
+  "canExecute": true,
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email": {
+      "main": [
+        [
+          {
+            "node": "AI Triage & Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Triage & Draft": {
+      "main": [
+        [
+          {
+            "node": "Is Urgent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Urgent?": {
+      "main": [
+        [
+          {
+            "node": "Alert Owner (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Routine?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Owner (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Log Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Routine?": {
+      "main": [
+        [
+          {
+            "node": "Create Reply Draft",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Reply Draft": {
+      "main": [
+        [
+          {
+            "node": "Log Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
   "nodes": [
-    { "id": "trigger", "kind": "trigger", "label": "Gmail trigger", "sub": "label: inbox" },
-    { "id": "clean", "kind": "action", "label": "Strip the noise", "sub": "quotes · signatures" },
-    { "id": "classify", "kind": "ai", "label": "Classify + summarise", "sub": "urgent / client / admin / noise + confidence" },
-    { "id": "route", "kind": "logic", "label": "Route by class", "sub": "confidence threshold 0.7" },
-    { "id": "telegram", "kind": "output", "label": "Urgent alert", "sub": "Telegram + summary + link" },
-    { "id": "draft", "kind": "output", "label": "Draft reply", "sub": "waits for approval (never auto-sent)" },
-    { "id": "log", "kind": "output", "label": "Sheets log", "sub": "every message" },
-    { "id": "review", "kind": "human", "label": "Human review", "sub": "low confidence (< 0.7)" },
-    { "id": "error", "kind": "output", "label": "Error alert", "sub": "node · error · run link (Telegram)" }
+    {
+      "id": "9cc403f9-5995-480c-8daa-d3d0a8c83e14",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        176
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "q": "is:unread",
+          "readStatus": "unread"
+        },
+        "simple": true
+      }
+    },
+    {
+      "id": "f9263632-9a94-4af1-8c66-c07a42a2cb1c",
+      "name": "Normalize Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        176
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": true,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "fromAddr",
+              "value": "={{ $json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "subject",
+              "value": "={{ $json.Subject }}",
+              "type": "string"
+            },
+            {
+              "id": "b3",
+              "name": "snippet",
+              "value": "={{ $json.snippet }}",
+              "type": "string"
+            },
+            {
+              "id": "b4",
+              "name": "receivedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "862b6d5b-2b5e-4775-8748-93b780db4fc3",
+      "name": "AI Triage & Draft",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        176
+      ],
+      "parameters": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "text",
+              "role": "system",
+              "content": "You are an email triage assistant. Classify the email as URGENT, ROUTINE, or SPAM. For ROUTINE, draft a polite reply. Return JSON only: {\"category\":\"URGENT|ROUTINE|SPAM\",\"reason\":\"short\",\"draft\":\"reply text or empty\"}."
+            },
+            {
+              "type": "text",
+              "role": "user",
+              "content": "={{ \"From: \" + $json.fromAddr + \"\\nSubject: \" + $json.subject + \"\\nBody: \" + $json.snippet }}"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "temperature": 0.3
+        }
+      }
+    },
+    {
+      "id": "429e6aec-1acc-4b5c-be40-aec2d1171dcb",
+      "name": "Is Urgent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        800,
+        176
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "URGENT"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "97c848be-42ca-4952-8cb7-5b9d1bea2b07",
+      "name": "Alert Owner (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1248,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "OWNER_CHAT_ID",
+        "text": "={{ \"Urgent email from \" + $json.fromAddr + \"\\nSubject: \" + $json.subject + \"\\nAI: \" + $json.output }}"
+      },
+      "webhookId": "31c14e82-4855-49f0-b4f5-4596b9748325"
+    },
+    {
+      "id": "cd6b0fe0-f79e-4c11-b9bc-2e2577e3361e",
+      "name": "Log Triage",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        192
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "email_triage_log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "from": "={{ $json.fromAddr }}",
+            "subject": "={{ $json.subject }}",
+            "category": "={{ $json.output }}",
+            "draft": "={{ $json.output }}",
+            "receivedAt": "={{ $json.receivedAt }}"
+          },
+          "schema": [
+            {
+              "id": "from",
+              "displayName": "from",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "draft",
+              "displayName": "draft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "receivedAt",
+              "displayName": "receivedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e2f9a300-4652-4efc-80bc-b5c31c63ec6e",
+      "name": "Is Routine?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1024,
+        272
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.output }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "ROUTINE"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "7aaef82b-5caa-414b-bb35-4fa2539e872e",
+      "name": "Create Reply Draft",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        192
+      ],
+      "parameters": {
+        "resource": "draft",
+        "operation": "create",
+        "subject": "={{ \"Re: \" + $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {
+          "sendTo": "={{ $json.fromAddr }}"
+        }
+      },
+      "webhookId": "745f3622-1296-4227-8a5b-5d7d195c1a4a"
+    }
   ],
-  "edges": [
-    { "from": "trigger", "to": "clean", "animated": true },
-    { "from": "clean", "to": "classify", "animated": true },
-    { "from": "classify", "to": "route", "animated": true },
-    { "from": "route", "to": "telegram", "label": "urgent" },
-    { "from": "route", "to": "draft", "label": "client" },
-    { "from": "route", "to": "log", "label": "all" },
-    { "from": "route", "to": "review", "label": "< 0.7", "dashed": true },
-    { "from": "route", "to": "error", "label": "on fail", "dashed": true }
-  ],
-  "guarantees": [
-    "Idempotent by Gmail message ID (retries cannot double-post)",
-    "Drafts created, never auto-sent (human checkpoint)",
-    "Low-confidence and risky drafts go to a review queue",
-    "Dedicated error workflow posts node, error and run link to Telegram",
-    "Disabling the trigger returns the inbox to normal immediately"
-  ]
+  "nodeGroups": [],
+  "activeVersion": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  }
 }

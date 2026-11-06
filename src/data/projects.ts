@@ -34,6 +34,7 @@ export interface Project {
   notes: { title: string; body: string }[];
   stack: string[];
   n8nImage?: string;
+  n8nUrl?: string;
   flow: {
     nodes: FlowNode[];
     edges: FlowEdge[];
@@ -72,6 +73,7 @@ export const projects: Project[] = [
     ],
     stack: ['n8n', 'Gmail', 'OpenAI', 'Telegram', 'Data table'],
     n8nImage: '/workflows/inbox-triage.png',
+    n8nUrl: 'https://pheonix369.app.n8n.cloud/workflow/95leKzDjRkJti2q1',
     flow: {
       nodes: [
         { id: 'trigger', label: 'Gmail trigger', sub: 'polls label', col: 0, row: 0, kind: 'trigger' },
@@ -129,6 +131,7 @@ export const projects: Project[] = [
     ],
     stack: ['n8n', 'WhatsApp', 'OpenAI', 'Telegram'],
     n8nImage: '/workflows/support-triage.png',
+    n8nUrl: 'https://pheonix369.app.n8n.cloud/workflow/rs2ryvGVBe4cLP6y',
     flow: {
       nodes: [
         { id: 'trigger', label: 'WhatsApp trigger', sub: 'inbound message', col: 0, row: 0, kind: 'trigger' },
@@ -176,6 +179,7 @@ export const projects: Project[] = [
     ],
     stack: ['n8n', 'Form trigger', 'OpenAI', 'Telegram', 'Gmail', 'Data table'],
     n8nImage: '/workflows/lead-router.png',
+    n8nUrl: 'https://pheonix369.app.n8n.cloud/workflow/nOZXfFIeP6sfQlkA',
     flow: {
       nodes: [
         { id: 'form', label: 'Lead form', sub: 'name · email · intent', col: 0, row: 0, kind: 'trigger' },
@@ -228,6 +232,7 @@ export const projects: Project[] = [
     ],
     stack: ['n8n', 'Schedule trigger', 'OpenAI', 'Gmail', 'WhatsApp', 'Data table'],
     n8nImage: '/workflows/invoice-followup.png',
+    n8nUrl: 'https://pheonix369.app.n8n.cloud/workflow/Hi2v7Va3RZpDMEyA',
     flow: {
       nodes: [
         { id: 'schedule', label: 'Daily invoice check', sub: 'schedule trigger', col: 0, row: 0, kind: 'trigger' },
@@ -279,6 +284,7 @@ export const projects: Project[] = [
     ],
     stack: ['n8n', 'Form trigger', 'Schedule trigger', 'Gmail', 'WhatsApp', 'Data table'],
     n8nImage: '/workflows/appointment-booking.png',
+    n8nUrl: 'https://pheonix369.app.n8n.cloud/workflow/xojSToJMaKAXWiqI',
     flow: {
       nodes: [
         { id: 'form', label: 'Appointment request form', sub: 'form trigger', col: 0, row: 0, kind: 'trigger' },

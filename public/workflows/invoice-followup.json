@@ -1,0 +1,329 @@
+{
+  "id": "Hi2v7Va3RZpDMEyA",
+  "name": "Invoice and Payment Follow-up",
+  "active": false,
+  "isArchived": false,
+  "versionId": "7f8f7381-4b05-411b-96f0-c7baae84711f",
+  "activeVersionId": null,
+  "triggerCount": 0,
+  "nodeCount": 7,
+  "createdAt": "2026-11-06T14:09:05.882Z",
+  "updatedAt": "2026-11-06T14:09:05.882Z",
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "tags": [],
+  "parentFolderId": null,
+  "description": "Daily overdue invoice reminders via email and WhatsApp.",
+  "scopes": [
+    "execution:delete",
+    "execution:list",
+    "execution:read",
+    "execution:reveal",
+    "workflow:create",
+    "workflow:delete",
+    "workflow:disableRedaction",
+    "workflow:enableRedaction",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:export",
+    "workflow:import",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:unshare",
+    "workflow:update"
+  ],
+  "canExecute": true,
+  "connections": {
+    "Daily Invoice Check": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Invoices": {
+      "main": [
+        [
+          {
+            "node": "Filter Overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Overdue": {
+      "main": [
+        [
+          {
+            "node": "AI Draft Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Draft Reminder": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Update Invoice Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "id": "60135ac5-daf3-4752-8217-718c95061b8f",
+      "name": "Daily Invoice Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 10,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2a53c099-b571-48e8-8bcc-bdd4f73dcdb1",
+      "name": "Get Pending Invoices",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "invoices"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "pending"
+            }
+          ]
+        },
+        "returnAll": true
+      }
+    },
+    {
+      "id": "ef7c21d2-4dff-4be0-8833-60854819d4e6",
+      "name": "Filter Overdue",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ new Date($json.dueDate) < new Date() }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "31d9e6f5-5366-4e3d-8e55-2cc143f961ed",
+      "name": "AI Draft Reminder",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "type": "text",
+              "role": "system",
+              "content": "You are a polite accounts assistant. Draft a short, professional payment reminder message (under 60 words) for an overdue invoice. Include invoice number and amount. Be courteous, not aggressive."
+            },
+            {
+              "type": "text",
+              "role": "user",
+              "content": "={{ \"Client: \" + $json.clientName + \"\\nInvoice: \" + $json.invoiceNo + \"\\nAmount: \" + $json.amount + \"\\nDue: \" + $json.dueDate }}"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "temperature": 0.4
+        }
+      }
+    },
+    {
+      "id": "12580add-662d-4546-a993-992c74efb255",
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.clientEmail }}",
+        "subject": "={{ \"Payment reminder: Invoice \" + $json.invoiceNo }}",
+        "emailType": "text",
+        "message": "={{ $json.output }}"
+      },
+      "webhookId": "89d52095-aabf-40fb-9d3e-65412e40c355"
+    },
+    {
+      "id": "97a09a2f-e8b9-433a-8cc8-afe519856886",
+      "name": "Send Reminder WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1248,
+        0
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.clientPhone }}",
+        "messageType": "text",
+        "textBody": "={{ $json.output }}"
+      },
+      "webhookId": "c512d129-80d6-40d0-849d-77f17133246a"
+    },
+    {
+      "id": "cf8c64b3-de2a-4c30-b61f-5056daaad3f4",
+      "name": "Update Invoice Status",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "invoices"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "invoiceNo",
+              "condition": "eq",
+              "keyValue": "={{ $json.invoiceNo }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "reminded",
+            "reminderCount": "={{ (parseInt($json.reminderCount) || 0) + 1 }}"
+          },
+          "schema": [
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reminderCount",
+              "displayName": "reminderCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "nodeGroups": [],
+  "activeVersion": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  }
+}
