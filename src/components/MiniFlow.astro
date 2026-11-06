@@ -1,0 +1,141 @@
+---
+import type { FlowEdge, FlowNode } from '../data/projects';
+
+interface Props {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+}
+
+const { nodes, edges } = Astro.props;
+
+const maxCol = Math.max(...nodes.map((n) => n.col), 1);
+const maxRow = Math.max(...nodes.map((n) => n.row), 1);
+
+const NODE_W = 24;
+const NODE_H = 12;
+const PAD_X = 16;
+const PAD_Y = 18;
+const W = 260;
+const H = 112;
+
+const positions = new Map(
+  nodes.map((node) => {
+    const x = PAD_X + (node.col / maxCol) * (W - PAD_X * 2 - NODE_W);
+    const y = PAD_Y + (node.row / maxRow) * (H - PAD_Y * 2 - NODE_H);
+    return [node.id, { x, y }];
+  })
+);
+
+const paths = edges.map((edge) => {
+  const from = positions.get(edge.from);
+  const to = positions.get(edge.to);
+  if (!from || !to) return null;
+
+  const sx = from.x + NODE_W;
+  const sy = from.y + NODE_H / 2;
+  const ex = to.x;
+  const ey = to.y + NODE_H / 2;
+  const dx = Math.max(16, Math.abs(ex - sx) * 0.45);
+  const d = `M ${sx} ${sy} C ${sx + dx} ${sy}, ${ex - dx} ${ey}, ${ex} ${ey}`;
+
+  return { d, dashed: Boolean(edge.dashed), id: `${edge.from}-${edge.to}` };
+});
+---
+
+<svg
+  class="mini-flow"
+  viewBox={`0 0 ${W} ${H}`}
+  role="img"
+  aria-label="Workflow shape preview"
+>
+  <g class="mini-edges">
+    {paths.filter(Boolean).map((path) => (
+      <path
+        class:list={['mini-edge', { 'mini-edge--dashed': path!.dashed }]}
+        d={path!.d}
+      />
+    ))}
+  </g>
+  <g class="mini-nodes">
+    {nodes.map((node) => {
+      const pos = positions.get(node.id)!;
+      return (
+        <g class:list={['mini-node', `mini-node--${node.kind}`]}>
+          <rect x={pos.x} y={pos.y} width={NODE_W} height={NODE_H} rx="3" />
+        </g>
+      );
+    })}
+  </g>
+  <circle class="mini-pulse" cx={positions.get(nodes[0].id)!.x + NODE_W / 2} cy={positions.get(nodes[0].id)!.y + NODE_H / 2} r="2" />
+</svg>
+
+<style>
+  .mini-flow {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .mini-edge {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1.2;
+    transition: stroke 0.35s var(--ease);
+  }
+
+  .mini-edge--dashed {
+    stroke-dasharray: 3 4;
+    opacity: 0.55;
+  }
+
+  .mini-node rect {
+    fill: var(--paper-raised);
+    stroke: var(--ink);
+    stroke-width: 1.1;
+    transition: fill 0.35s var(--ease), stroke 0.35s var(--ease);
+  }
+
+  .mini-node--trigger rect {
+    fill: var(--signal);
+  }
+
+  .mini-node--ai rect {
+    stroke: var(--signal-ink);
+  }
+
+  .mini-node--human rect {
+    stroke-dasharray: 2.5 2.5;
+  }
+
+  .mini-node--output rect {
+    fill: var(--ink);
+  }
+
+  .mini-pulse {
+    fill: var(--signal);
+    animation: blink 2.6s ease-in-out infinite;
+    transition: fill 0.35s var(--ease);
+  }
+
+  :global(.work-row:hover) .mini-edge {
+    stroke: rgba(239, 233, 220, 0.55);
+  }
+
+  :global(.work-row:hover) .mini-node rect {
+    fill: transparent;
+    stroke: var(--paper-on-ink);
+  }
+
+  :global(.work-row:hover) .mini-node--trigger rect {
+    fill: var(--signal);
+    stroke: var(--signal);
+  }
+
+  :global(.work-row:hover) .mini-node--output rect {
+    fill: var(--paper-on-ink);
+  }
+
+  :global(.work-row:hover) .mini-pulse {
+    fill: var(--paper-on-ink);
+  }
+</style>

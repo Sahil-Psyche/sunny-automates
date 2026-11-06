@@ -1,0 +1,526 @@
+---
+import type { FlowEdge, FlowNode, NodeKind } from '../data/projects';
+
+interface Props {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  fig: string;
+  meta: string;
+  caption: string;
+  uid: string;
+}
+
+const { nodes, edges, fig, meta, caption, uid } = Astro.props;
+
+const NODE_W = 152;
+const NODE_H = 66;
+const COL_GAP = 70;
+const ROW_GAP = 34;
+const PAD = 26;
+
+const maxCol = Math.max(...nodes.map((n) => n.col));
+const maxRow = Math.max(...nodes.map((n) => n.row));
+
+const width = PAD * 2 + (maxCol + 1) * NODE_W + maxCol * COL_GAP;
+const height = PAD * 2 + (maxRow + 1) * NODE_H + maxRow * ROW_GAP;
+
+const positions = new Map(
+  nodes.map((node) => {
+    const x = PAD + node.col * (NODE_W + COL_GAP);
+    const y = PAD + node.row * (NODE_H + ROW_GAP);
+    return [node.id, { x, y }];
+  })
+);
+
+const kindLabel: Record<NodeKind, string> = {
+  trigger: 'TRIGGER',
+  action: 'ACTION',
+  ai: 'AI STEP',
+  logic: 'LOGIC',
+  human: 'HUMAN',
+  output: 'OUTPUT',
+};
+
+const edgePaths = edges.flatMap((edge, index) => {
+  const from = positions.get(edge.from);
+  const to = positions.get(edge.to);
+  if (!from || !to) return [];
+
+  const sx = from.x + NODE_W;
+  const sy = from.y + NODE_H / 2;
+  const ex = to.x;
+  const ey = to.y + NODE_H / 2;
+  const bend = Math.max(36, Math.abs(ex - sx) * 0.45);
+  const d = `M ${sx} ${sy} C ${sx + bend} ${sy}, ${ex - bend} ${ey}, ${ex} ${ey}`;
+  const t = 0.56;
+
+  return [
+    {
+      ...edge,
+      index,
+      sx,
+      sy,
+      id: `${uid}-edge-${index}`,
+      d,
+      labelX: sx + (ex - sx) * t,
+      labelY: sy + (ey - sy) * t - 7,
+    },
+  ];
+});
+
+const labelSize = (label: string) => {
+  if (label.length > 22) return 11;
+  if (label.length > 18) return 11.6;
+  return 12.6;
+};
+
+const subSize = (sub: string) => {
+  if (sub.length > 24) return 8.4;
+  if (sub.length > 20) return 8.8;
+  return 9.4;
+};
+---
+
+<figure class="graph-panel">
+  <div class="graph-bar">
+    <span class="graph-fig">{fig}</span>
+    <span class="graph-bar-right">
+      <span class="mobile-hint">scroll →</span>
+      <span class="graph-status"><i aria-hidden="true"></i>{meta}</span>
+    </span>
+  </div>
+
+  <div class="graph-canvas dot-grid">
+    <span class="tick tick--tl" aria-hidden="true"></span>
+    <span class="tick tick--tr" aria-hidden="true"></span>
+    <span class="tick tick--bl" aria-hidden="true"></span>
+    <span class="tick tick--br" aria-hidden="true"></span>
+
+    <div
+      class="graph-scroll"
+      role="region"
+      aria-label={`Workflow diagram: ${fig}`}
+      tabindex="0"
+    >
+      <svg
+        class="flow"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`Workflow architecture — ${fig}`}
+      >
+        <defs>
+          <marker
+            id={`${uid}-arrow`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="var(--ink)" stroke-width="1.2" />
+          </marker>
+          <marker
+            id={`${uid}-arrow-signal`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="var(--signal-ink)" stroke-width="1.2" />
+          </marker>
+        </defs>
+
+        <g class="edges">
+          {edgePaths.map((edge) => (
+            <path
+              id={edge.id}
+              d={edge.d}
+              class:list={[
+                'flow-edge',
+                edge.dashed ? 'flow-edge--dashed' : 'flow-edge--draw',
+                { 'flow-edge--animated': edge.animated },
+              ]}
+              style={`--i:${edge.index}`}
+              marker-end={`url(#${uid}-${edge.dashed ? 'arrow-signal' : 'arrow'})`}
+              pathLength={edge.dashed ? undefined : 1}
+            />
+          ))}
+        </g>
+
+        {edgePaths.map((edge) =>
+          edge.label ? (
+            <text
+              class="edge-label"
+              x={edge.labelX}
+              y={edge.labelY}
+              text-anchor="middle"
+              style={`--i:${edge.index}`}
+            >
+              {edge.label}
+            </text>
+          ) : null
+        )}
+
+        <g class="nodes">
+          {nodes.map((node) => {
+            const pos = positions.get(node.id)!;
+            return (
+              <g
+                class:list={['flow-node', `flow-node--${node.kind}`]}
+                transform={`translate(${pos.x} ${pos.y})`}
+              >
+                <rect class="node-body" width={NODE_W} height={NODE_H} rx="7" />
+                {node.kind === 'trigger' && (
+                  <rect class="node-trigger-bar" x="1" y="1" width="3.5" height={NODE_H - 2} rx="1.5" />
+                )}
+                {node.kind === 'ai' && (
+                  <path class="node-corner" d={`M ${NODE_W - 12} 0 H ${NODE_W} V 12 Z`} />
+                )}
+                <text class="node-tag" x="14" y="19">
+                  {kindLabel[node.kind]}
+                </text>
+                <text
+                  class="node-label"
+                  x="14"
+                  y="40"
+                  style={`font-size:${labelSize(node.label)}px`}
+                >
+                  {node.label}
+                </text>
+                {node.sub && (
+                  <text
+                    class="node-sub"
+                    x="14"
+                    y="55"
+                    style={`font-size:${subSize(node.sub)}px`}
+                  >
+                    {node.sub}
+                  </text>
+                )}
+                <circle class="node-port node-port--in" cx="0" cy={NODE_H / 2} r="2.8" />
+                <circle class="node-port" cx={NODE_W} cy={NODE_H / 2} r="2.8" />
+              </g>
+            );
+          })}
+        </g>
+
+        <g class="pulses">
+          {edgePaths
+            .filter((edge) => edge.animated)
+            .map((edge, i) => (
+              <circle class="flow-pulse" r="3.2">
+                <animate
+                  attributeName="opacity"
+                  from="0"
+                  to="1"
+                  dur="0.3s"
+                  begin={`${i * 0.8}s`}
+                  fill="freeze"
+                />
+                <animateMotion
+                  dur="4.2s"
+                  repeatCount="indefinite"
+                  begin={`${i * 0.8}s`}
+                  keyPoints="0;1"
+                  keyTimes="0;1"
+                  calcMode="linear"
+                >
+                  <mpath href={`#${edge.id}`} />
+                </animateMotion>
+              </circle>
+            ))}
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <figcaption class="graph-caption">
+    <span>{caption}</span>
+    <span class="graph-legend">
+      <span class="legend-line" aria-hidden="true"></span> automated
+      <span class="legend-dash" aria-hidden="true"></span> human fallback
+    </span>
+  </figcaption>
+</figure>
+
+<style>
+  .graph-panel {
+    border: 1px solid var(--line-strong);
+    background: var(--paper-raised);
+    box-shadow: 6px 6px 0 rgba(22, 21, 15, 0.06);
+  }
+
+  .graph-bar,
+  .graph-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .graph-bar {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .graph-caption {
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+
+  .graph-fig {
+    color: var(--ink-2);
+  }
+
+  .graph-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .mobile-hint {
+    display: none;
+    color: var(--signal-ink);
+  }
+
+  .graph-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .graph-status i {
+    width: 5px;
+    height: 5px;
+    background: var(--signal);
+    border-radius: 50%;
+  }
+
+  .graph-canvas {
+    position: relative;
+    padding: 10px;
+  }
+
+  .tick {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.5;
+  }
+
+  .tick--tl {
+    top: 6px;
+    left: 6px;
+    border-top: 1px solid var(--ink);
+    border-left: 1px solid var(--ink);
+  }
+
+  .tick--tr {
+    top: 6px;
+    right: 6px;
+    border-top: 1px solid var(--ink);
+    border-right: 1px solid var(--ink);
+  }
+
+  .tick--bl {
+    bottom: 6px;
+    left: 6px;
+    border-bottom: 1px solid var(--ink);
+    border-left: 1px solid var(--ink);
+  }
+
+  .tick--br {
+    bottom: 6px;
+    right: 6px;
+    border-bottom: 1px solid var(--ink);
+    border-right: 1px solid var(--ink);
+  }
+
+  .graph-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+    padding: 14px;
+  }
+
+  .graph-scroll:focus-visible {
+    outline-offset: -4px;
+  }
+
+  .flow {
+    width: 100%;
+    min-width: 720px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .flow-edge {
+    fill: none;
+    stroke: rgba(22, 21, 15, 0.52);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+  }
+
+  .flow-edge--dashed {
+    stroke: var(--signal-ink);
+    stroke-width: 1.15;
+    stroke-dasharray: 4 5;
+    opacity: 0.82;
+  }
+
+  .flow-edge--fade {
+    opacity: 0;
+  }
+
+  .edge-label {
+    font-family: var(--mono);
+    font-size: 9.4px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    fill: var(--ink-3);
+    paint-order: stroke;
+    stroke: var(--paper-raised);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    opacity: 0;
+    animation: edge-fade 0.8s ease forwards;
+    animation-delay: calc(var(--i, 0) * 120ms + 1s);
+  }
+
+  .node-body {
+    fill: var(--paper-raised);
+    stroke: var(--line-strong);
+    stroke-width: 1.15;
+  }
+
+  .flow-node--trigger .node-body {
+    stroke: var(--ink);
+    stroke-width: 1.4;
+  }
+
+  .flow-node--human .node-body {
+    stroke-dasharray: 5 4;
+  }
+
+  .flow-node--output .node-body {
+    fill: var(--ink);
+    stroke: var(--ink);
+  }
+
+  .node-trigger-bar {
+    fill: var(--signal);
+  }
+
+  .node-corner {
+    fill: var(--signal);
+  }
+
+  .node-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    fill: var(--ink-3);
+  }
+
+  .flow-node--trigger .node-tag,
+  .flow-node--ai .node-tag {
+    fill: var(--signal-ink);
+  }
+
+  .flow-node--output .node-tag {
+    fill: rgba(239, 233, 220, 0.68);
+  }
+
+  .node-label {
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    fill: var(--ink);
+  }
+
+  .flow-node--output .node-label {
+    fill: var(--paper-on-ink);
+  }
+
+  .node-sub {
+    font-family: var(--mono);
+    fill: var(--ink-3);
+  }
+
+  .flow-node--output .node-sub {
+    fill: rgba(239, 233, 220, 0.72);
+  }
+
+  .node-port {
+    fill: var(--paper-raised);
+    stroke: var(--ink);
+    stroke-width: 1;
+  }
+
+  .flow-node--output .node-port {
+    fill: var(--ink);
+    stroke: var(--paper-on-ink);
+  }
+
+  .flow-pulse {
+    fill: var(--signal);
+    opacity: 0;
+  }
+
+  .graph-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--ink-3);
+  }
+
+  .legend-line {
+    display: inline-block;
+    width: 18px;
+    height: 1px;
+    background: var(--line-strong);
+    margin-left: 8px;
+  }
+
+  .legend-dash {
+    display: inline-block;
+    width: 18px;
+    height: 1px;
+    margin-left: 8px;
+    background-image: linear-gradient(90deg, var(--signal-ink) 45%, transparent 45%);
+    background-size: 6px 1px;
+  }
+
+  @media (max-width: 900px) {
+    .mobile-hint {
+      display: inline;
+    }
+
+    .fit-hide {
+      display: none;
+    }
+
+    .graph-scroll {
+      padding: 10px;
+    }
+
+    .graph-caption {
+      font-size: 9.5px;
+    }
+
+    .graph-legend {
+      display: none;
+    }
+  }
+</style>

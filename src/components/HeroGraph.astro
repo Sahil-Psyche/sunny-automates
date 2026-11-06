@@ -1,0 +1,577 @@
+---
+type Kind = 'trigger' | 'action' | 'ai' | 'logic' | 'human' | 'output';
+
+interface HeroNode {
+  id: string;
+  x: number;
+  y: number;
+  kind: Kind;
+  tag: string;
+  label: string;
+  sub: string;
+}
+
+const W = 176;
+const H = 70;
+
+const nodes: HeroNode[] = [
+  { id: 'gmail', x: 32, y: 120, kind: 'trigger', tag: 'TRIGGER', label: 'Gmail + label', sub: 'new message' },
+  { id: 'clean', x: 272, y: 120, kind: 'action', tag: 'ACTION', label: 'Strip the noise', sub: 'quotes · signatures' },
+  { id: 'classify', x: 512, y: 120, kind: 'ai', tag: 'AI STEP', label: 'Classify + summarise', sub: 'urgent / client / noise' },
+  { id: 'route', x: 752, y: 120, kind: 'logic', tag: 'LOGIC', label: 'Route by class', sub: 'threshold 0.7' },
+  { id: 'telegram', x: 1000, y: 18, kind: 'output', tag: 'OUTPUT', label: 'Urgent alert', sub: 'Telegram + summary' },
+  { id: 'draft', x: 1000, y: 130, kind: 'output', tag: 'OUTPUT', label: 'Draft reply', sub: 'waits for approval' },
+  { id: 'log', x: 1000, y: 242, kind: 'output', tag: 'OUTPUT', label: 'Sheets log', sub: 'every message' },
+  { id: 'human', x: 752, y: 248, kind: 'human', tag: 'HUMAN', label: 'Low confidence', sub: 'goes to a person' },
+];
+
+const edges = [
+  { from: 'gmail', to: 'clean', index: 0, draw: true, animated: true },
+  { from: 'clean', to: 'classify', index: 1, draw: true, animated: true },
+  { from: 'classify', to: 'route', index: 2, draw: true, animated: true },
+  { from: 'route', to: 'telegram', label: 'urgent', index: 3 },
+  { from: 'route', to: 'draft', label: 'client', index: 4, animated: true },
+  { from: 'route', to: 'log', label: 'all', index: 5 },
+  { from: 'classify', to: 'human', label: 'confidence < 0.7', index: 6, dashed: true },
+];
+
+const map = new Map(nodes.map((node) => [node.id, node]));
+
+const paths = edges.flatMap((edge) => {
+  const from = map.get(edge.from);
+  const to = map.get(edge.to);
+  if (!from || !to) return [];
+
+  const sx = from.x + W;
+  const sy = from.y + H / 2;
+  const ex = to.x;
+  const ey = to.y + H / 2;
+  const bend = Math.max(36, Math.abs(ex - sx) * 0.45);
+  return [
+    {
+      ...edge,
+      id: `hero-edge-${edge.index}`,
+      sx,
+      sy,
+      d: `M ${sx} ${sy} C ${sx + bend} ${sy}, ${ex - bend} ${ey}, ${ex} ${ey}`,
+      labelX: (sx + ex) / 2,
+      labelY: (sy + ey) / 2 - 7,
+    },
+  ];
+});
+
+const sizeFor = (label: string) => (label.length > 18 ? 12 : 12.8);
+---
+
+<figure class="graph-panel">
+  <div class="graph-bar">
+    <span class="graph-fig">FIG. 01 — INBOX.TRIAGE</span>
+    <span class="graph-status"><i aria-hidden="true"></i>Self-initiated build</span>
+  </div>
+
+  <div class="graph-canvas dot-grid">
+    <span class="tick tick--tl" aria-hidden="true"></span>
+    <span class="tick tick--tr" aria-hidden="true"></span>
+    <span class="tick tick--bl" aria-hidden="true"></span>
+    <span class="tick tick--br" aria-hidden="true"></span>
+
+    <div class="graph-scroll hero-desktop">
+      <svg
+        class="hero-svg"
+        viewBox="0 0 1208 350"
+        role="img"
+        aria-label="Workflow architecture of an inbox triage system"
+      >
+        <defs>
+          <marker
+            id="hero-arrow"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="var(--ink)" stroke-width="1.2" />
+          </marker>
+          <marker
+            id="hero-arrow-signal"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="var(--signal-ink)" stroke-width="1.2" />
+          </marker>
+        </defs>
+
+        <g>
+          {paths.map((edge) => (
+            <path
+              id={edge.id}
+              d={edge.d}
+              class:list={[
+                'flow-edge',
+                edge.dashed ? 'flow-edge--dashed' : edge.draw ? 'flow-edge--draw' : 'flow-edge--fade',
+              ]}
+              style={`--i:${edge.index}`}
+              marker-end={`url(#hero-${edge.dashed ? 'arrow-signal' : 'arrow'})`}
+              pathLength={edge.dashed ? undefined : 1}
+            />
+          ))}
+        </g>
+
+        {paths.map((edge) =>
+          edge.label ? (
+            <text class="edge-label" x={edge.labelX} y={edge.labelY} text-anchor="middle">
+              {edge.label}
+            </text>
+          ) : null
+        )}
+
+        <g>
+          {nodes.map((node) => (
+            <g
+              class:list={['flow-node', `flow-node--${node.kind}`]}
+              transform={`translate(${node.x} ${node.y})`}
+            >
+              <rect class="node-body" width={W} height={H} rx="7" />
+              {node.kind === 'trigger' && (
+                <rect class="node-trigger-bar" x="1" y="1" width="3.5" height={H - 2} rx="1.5" />
+              )}
+              {node.kind === 'ai' && (
+                <path class="node-corner" d={`M ${W - 12} 0 H ${W} V 12 Z`} />
+              )}
+              <text class="node-tag" x="14" y="20">{node.tag}</text>
+              <text class="node-label" x="14" y="42" style={`font-size:${sizeFor(node.label)}px`}>
+                {node.label}
+              </text>
+              <text class="node-sub" x="14" y="58">{node.sub}</text>
+              <circle class="node-port node-port--in" cx="0" cy={H / 2} r="2.8" />
+              <circle class="node-port" cx={W} cy={H / 2} r="2.8" />
+            </g>
+          ))}
+        </g>
+
+        <g class="pulses">
+          {paths
+            .filter((edge) => edge.animated)
+            .map((edge, i) => (
+              <circle class="flow-pulse" r="3.2">
+                <animate
+                  attributeName="opacity"
+                  from="0"
+                  to="1"
+                  dur="0.3s"
+                  begin={`${i * 0.9}s`}
+                  fill="freeze"
+                />
+                <animateMotion dur="4.4s" repeatCount="indefinite" begin={`${i * 0.9}s`}>
+                  <mpath href={`#${edge.id}`} />
+                </animateMotion>
+              </circle>
+            ))}
+        </g>
+      </svg>
+    </div>
+
+    <div class="hero-mobile">
+      <div class="hm-node hm-node--trigger">
+        <span class="hm-tag">TRIGGER</span>
+        <strong>Gmail + label</strong>
+        <em>new message</em>
+      </div>
+      <div class="hm-wire" aria-hidden="true"></div>
+      <div class="hm-node">
+        <span class="hm-tag">ACTION</span>
+        <strong>Strip the noise</strong>
+        <em>quotes · signatures</em>
+      </div>
+      <div class="hm-wire" aria-hidden="true"></div>
+      <div class="hm-node hm-node--ai">
+        <span class="hm-tag">AI STEP</span>
+        <strong>Classify + summarise</strong>
+        <em>urgent / client / noise</em>
+      </div>
+      <div class="hm-wire hm-wire--branch" aria-hidden="true"></div>
+      <div class="hm-branch">
+        <div class="hm-out"><span>urgent</span><strong>Telegram alert</strong></div>
+        <div class="hm-out"><span>client</span><strong>Draft reply</strong></div>
+        <div class="hm-out"><span>all</span><strong>Sheets log</strong></div>
+        <div class="hm-out hm-out--human"><span>low confidence</span><strong>Human review</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <figcaption class="graph-caption">
+    <span>fig. 01 — inbox.triage / every class has an owner, every failure a fallback</span>
+    <span class="graph-legend">
+      <span class="legend-line" aria-hidden="true"></span> automated
+      <span class="legend-dash" aria-hidden="true"></span> human fallback
+    </span>
+  </figcaption>
+</figure>
+
+<style>
+  .graph-panel {
+    border: 1px solid var(--line-strong);
+    background: var(--paper-raised);
+    box-shadow: 6px 6px 0 rgba(22, 21, 15, 0.06);
+  }
+
+  .graph-bar,
+  .graph-caption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .graph-bar {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .graph-caption {
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+    font-size: 9.5px;
+  }
+
+  .graph-fig {
+    color: var(--ink-2);
+  }
+
+  .graph-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .graph-status i {
+    width: 5px;
+    height: 5px;
+    background: var(--signal);
+    border-radius: 50%;
+  }
+
+  .graph-canvas {
+    position: relative;
+    padding: 8px;
+  }
+
+  .tick {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.5;
+  }
+
+  .tick--tl { top: 5px; left: 5px; border-top: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .tick--tr { top: 5px; right: 5px; border-top: 1px solid var(--ink); border-right: 1px solid var(--ink); }
+  .tick--bl { bottom: 5px; left: 5px; border-bottom: 1px solid var(--ink); border-left: 1px solid var(--ink); }
+  .tick--br { bottom: 5px; right: 5px; border-bottom: 1px solid var(--ink); border-right: 1px solid var(--ink); }
+
+  .graph-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+    padding: 14px;
+  }
+
+  .hero-svg {
+    width: 100%;
+    min-width: 760px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .flow-edge {
+    fill: none;
+    stroke: var(--line-strong);
+    stroke-width: 1.3;
+    stroke-linecap: round;
+  }
+
+  .flow-edge--dashed {
+    stroke: var(--signal-ink);
+    stroke-width: 1.15;
+    stroke-dasharray: 4 5;
+    opacity: 0.82;
+  }
+
+  .flow-edge--fade {
+    opacity: 0;
+    animation: edge-fade 0.9s ease forwards;
+    animation-delay: calc(var(--i, 0) * 120ms + 800ms);
+  }
+
+  .edge-label {
+    font-family: var(--mono);
+    font-size: 9.2px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    fill: var(--ink-3);
+    paint-order: stroke;
+    stroke: var(--paper-raised);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    opacity: 0;
+    animation: edge-fade 0.8s ease forwards;
+    animation-delay: calc(var(--i, 0) * 120ms + 1s);
+  }
+
+  .node-body {
+    fill: var(--paper-raised);
+    stroke: var(--line-strong);
+    stroke-width: 1.15;
+  }
+
+  .flow-node--trigger .node-body {
+    stroke: var(--ink);
+    stroke-width: 1.4;
+  }
+
+  .flow-node--human .node-body {
+    stroke-dasharray: 5 4;
+  }
+
+  .flow-node--output .node-body {
+    fill: var(--ink);
+    stroke: var(--ink);
+  }
+
+  .node-trigger-bar { fill: var(--signal); }
+  .node-corner { fill: var(--signal); }
+
+  .node-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    fill: var(--ink-3);
+  }
+
+  .flow-node--trigger .node-tag,
+  .flow-node--ai .node-tag {
+    fill: var(--signal-ink);
+  }
+
+  .flow-node--output .node-tag {
+    fill: rgba(239, 233, 220, 0.68);
+  }
+
+  .node-label {
+    font-family: var(--sans);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    fill: var(--ink);
+  }
+
+  .flow-node--output .node-label {
+    fill: var(--paper-on-ink);
+  }
+
+  .node-sub {
+    font-family: var(--mono);
+    font-size: 9.4px;
+    fill: var(--ink-3);
+  }
+
+  .flow-node--output .node-sub {
+    fill: rgba(239, 233, 220, 0.72);
+  }
+
+  .node-port {
+    fill: var(--paper-raised);
+    stroke: var(--ink);
+    stroke-width: 1;
+  }
+
+  .flow-node--output .node-port {
+    fill: var(--ink);
+    stroke: var(--paper-on-ink);
+  }
+
+  .flow-pulse {
+    fill: var(--signal);
+    opacity: 0;
+  }
+
+  .graph-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--ink-3);
+  }
+
+  .legend-line {
+    display: inline-block;
+    width: 18px;
+    height: 1px;
+    background: var(--line-strong);
+    margin-left: 8px;
+  }
+
+  .legend-dash {
+    display: inline-block;
+    width: 18px;
+    height: 1px;
+    margin-left: 8px;
+    background-image: linear-gradient(90deg, var(--signal-ink) 45%, transparent 45%);
+    background-size: 6px 1px;
+  }
+
+  .hero-mobile {
+    display: none;
+    padding: 18px 16px 26px;
+  }
+
+  .hm-node {
+    position: relative;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--paper-raised);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .hm-node--trigger {
+    border-color: var(--ink);
+    border-left: 3px solid var(--signal);
+  }
+
+  .hm-node--ai {
+    position: relative;
+  }
+
+  .hm-node--ai::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    border-top: 12px solid var(--signal);
+    border-left: 12px solid transparent;
+  }
+
+  .hm-tag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--signal-ink);
+  }
+
+  .hm-node strong {
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .hm-node em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 9.5px;
+    color: var(--ink-3);
+  }
+
+  .hm-wire {
+    width: 1px;
+    height: 20px;
+    margin-left: 22px;
+    background: var(--line-strong);
+    position: relative;
+  }
+
+  .hm-wire::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    bottom: -3px;
+    width: 5px;
+    height: 5px;
+    border-right: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    transform: rotate(45deg);
+  }
+
+  .hm-branch {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+    padding-left: 20px;
+    border-left: 1px dashed var(--signal-ink);
+    margin-left: 22px;
+  }
+
+  .hm-out {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 8px 10px;
+    background: var(--paper-raised);
+  }
+
+  .hm-out span {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+
+  .hm-out strong {
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .hm-out--human {
+    border-style: dashed;
+    border-color: var(--signal-ink);
+  }
+
+  .hm-out--human span {
+    color: var(--signal-ink);
+  }
+
+  @media (max-width: 880px) {
+    .hero-desktop {
+      display: none;
+    }
+
+    .hero-mobile {
+      display: block;
+    }
+
+    .graph-caption {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .graph-legend {
+      display: none;
+    }
+
+    .graph-bar {
+      font-size: 9.5px;
+    }
+  }
+</style>

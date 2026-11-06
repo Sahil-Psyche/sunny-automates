@@ -1,0 +1,52 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page not found — Sunny Automates" description="This route does not resolve. Head back to the systems.">
+  <section class="not-found wrap">
+    <p class="eyebrow">Error 404 / route not found</p>
+    <h1 class="display">This path<br />doesn’t <em class="serif">resolve.</em></h1>
+    <p class="not-found-copy">
+      The workflow you were looking for is not wired here. The systems index is a better place to
+      start.
+    </p>
+    <div class="not-found-actions">
+      <a class="btn" href="/">Back home <span class="arrow">↗</span></a>
+      <a class="btn btn--ghost" href="/#work">See the systems <span class="arrow">↓</span></a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .not-found {
+    min-height: 68vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: 100px 120px;
+  }
+
+  .not-found h1 {
+    margin-top: 28px;
+    font-size: clamp(3.2rem, 8vw, 7rem);
+  }
+
+  .not-found h1 em {
+    color: var(--signal-ink);
+  }
+
+  .not-found-copy {
+    margin-top: 28px;
+    max-width: 44ch;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .not-found-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 34px;
+  }
+</style>

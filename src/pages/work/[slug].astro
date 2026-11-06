@@ -1,0 +1,737 @@
+---
+import Base from '../../layouts/Base.astro';
+import WorkflowGraph from '../../components/WorkflowGraph.astro';
+import MobileFlow from '../../components/MobileFlow.astro';
+import { getNextProject, projects } from '../../data/projects';
+import type { Project } from '../../data/projects';
+import { gmailLink, site } from '../../data/site';
+
+export function getStaticPaths() {
+  return projects.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props as { project: Project };
+const next = getNextProject(project.slug)!;
+
+const meta = [
+  { label: 'Sector', value: project.sector },
+  { label: 'Build type', value: project.buildType },
+  { label: 'Trigger', value: project.trigger },
+  { label: 'Surfaces', value: project.surfaces },
+];
+
+const figLabel = `FIG. ${String(Number(project.index) + 1).padStart(2, '0')} — ${project.slug.toUpperCase()}`;
+---
+
+<Base
+  title={`${project.title} — ${site.name}`}
+  description={project.dek}
+>
+  <article class="case">
+    <header class="wrap case-head">
+      <div class="case-topbar">
+        <a class="back-link" href="/#work">
+          <span aria-hidden="true">←</span> All systems
+        </a>
+        <span class="case-count">Case file {project.index} / 04</span>
+      </div>
+
+      <p class="case-kicker">
+        <span>{project.sector}</span>
+        <span class="case-slash">/</span>
+        <span class="case-type">{project.buildType}</span>
+      </p>
+
+      <h1 class="case-title">{project.title}</h1>
+      <p class="case-dek">{project.dek}</p>
+
+      <dl class="case-meta">
+        {meta.map((item) => (
+          <div>
+            <dt>{item.label}</dt>
+            <dd>{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </header>
+
+    <section class="wrap case-graph" aria-label="System architecture">
+      <div class="case-graph-desktop">
+        <WorkflowGraph
+          nodes={project.flow.nodes}
+          edges={project.flow.edges}
+          fig={figLabel}
+          meta={project.buildType}
+          caption={project.caption}
+          uid={project.slug}
+        />
+      </div>
+      <div class="case-graph-mobile">
+        <MobileFlow
+          nodes={project.flow.nodes}
+          edges={project.flow.edges}
+          fig={figLabel}
+          meta={project.buildType}
+          caption={project.caption}
+        />
+      </div>
+    </section>
+
+    <section class="wrap case-body">
+      <div class="case-break">
+        <p class="eyebrow">The break</p>
+        {project.problem.map((paragraph) => (
+          <p>{paragraph}</p>
+        ))}
+        <blockquote class="case-quote">
+          “{project.quote}”
+        </blockquote>
+      </div>
+
+      <div class="case-system">
+        <p class="eyebrow">The system</p>
+        <ol class="system-list">
+          {project.system.map((step, i) => (
+            <li>
+              <span class="system-index">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h2>{step.title}</h2>
+                <p>{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <section class="notes-band" aria-labelledby="notes-title">
+      <div class="wrap">
+        <div class="notes-head">
+          <div>
+            <p class="eyebrow">Build notes</p>
+            <h2 class="notes-title" id="notes-title">
+              Built to fail <em class="serif">loudly.</em>
+            </h2>
+          </div>
+          <p class="notes-intro">
+            Happy paths are easy to demo. These are the decisions that keep the system honest on a
+            bad day.
+          </p>
+        </div>
+
+        <div class="notes-grid">
+          {project.notes.map((note, i) => (
+            <div class="note-card">
+              <span class="note-index">{String(i + 1).padStart(2, '0')}</span>
+              <h3>{note.title}</h3>
+              <p>{note.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="stack-block">
+          <p class="stack-label">The stack</p>
+          <div class="stack-chips">
+            {project.stack.map((tool) => (
+              <span class="chip">{tool}</span>
+            ))}
+          </div>
+          <p class="stack-note">Architecture documented end-to-end. Ask for a walkthrough.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="case-cta">
+      <div class="wrap case-cta-inner">
+        <div>
+          <p class="eyebrow">Start a build</p>
+          <h2>
+            Want this loop closed <em class="serif">in your team?</em>
+          </h2>
+        </div>
+        <div class="case-cta-actions">
+          <a class="btn case-cta-btn" href={gmailLink} target="_blank" rel="noopener">
+            Book a discovery call <span class="arrow">↗</span>
+          </a>
+          <a class="case-email" href={`mailto:${site.email}`}>{site.email}</a>
+        </div>
+      </div>
+    </section>
+
+    <a class="next-project" href={`/work/${next.slug}`}>
+      <span class="wrap next-inner">
+        <span class="next-label">Next case file</span>
+        <span class="next-index">{next.index}</span>
+        <span class="next-title">{next.title}</span>
+        <span class="next-arrow" aria-hidden="true">↗</span>
+      </span>
+    </a>
+  </article>
+</Base>
+
+<style>
+  .case-head {
+    padding-block: clamp(32px, 4vw, 52px) clamp(48px, 6vw, 76px);
+  }
+
+  .case-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: clamp(44px, 6vw, 80px);
+  }
+
+  .back-link,
+  .case-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink);
+  }
+
+  .back-link span {
+    transition: transform 0.25s var(--ease);
+  }
+
+  .back-link:hover span {
+    transform: translateX(-3px);
+  }
+
+  .case-kicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 26px;
+  }
+
+  .case-slash {
+    color: var(--line-strong);
+  }
+
+  .case-type {
+    color: var(--signal-ink);
+  }
+
+  .case-title {
+    font-size: clamp(3rem, 7.2vw, 7.4rem);
+    line-height: 0.9;
+    letter-spacing: -0.055em;
+    max-width: 15ch;
+  }
+
+  .case-dek {
+    margin-top: 28px;
+    max-width: 58ch;
+    font-size: clamp(1.05rem, 1.7vw, 1.28rem);
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+
+  .case-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin-top: clamp(42px, 5vw, 64px);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .case-meta div {
+    padding: 20px 26px 22px 0;
+  }
+
+  .case-meta div + div {
+    border-left: 1px solid var(--line);
+    padding-left: 26px;
+  }
+
+  .case-meta dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+
+  .case-meta dd {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+
+  .case-graph {
+    padding-bottom: clamp(56px, 7vw, 92px);
+  }
+
+  .case-graph-mobile {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .case-graph-desktop {
+      display: none;
+    }
+
+    .case-graph-mobile {
+      display: block;
+    }
+  }
+
+  .case-body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: clamp(44px, 7vw, 116px);
+    padding-block: clamp(56px, 7vw, 92px);
+    border-top: 1px solid var(--line);
+  }
+
+  .case-break p:not(.eyebrow) {
+    font-size: 16.5px;
+    line-height: 1.7;
+    color: var(--ink-2);
+    margin-top: 20px;
+    max-width: 52ch;
+  }
+
+  .case-break p.eyebrow,
+  .case-system p.eyebrow {
+    margin-bottom: 26px;
+  }
+
+  .case-quote {
+    margin-top: 32px;
+    padding-left: 20px;
+    border-left: 2px solid var(--signal);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    max-width: 26ch;
+  }
+
+  .system-list li {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 20px;
+    padding-block: 22px;
+    border-top: 1px solid var(--line);
+  }
+
+  .system-list li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .system-list li:last-child {
+    padding-bottom: 0;
+  }
+
+  .system-index {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--signal-ink);
+    padding-top: 4px;
+  }
+
+  .system-list h2 {
+    font-size: 1.2rem;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    margin-bottom: 7px;
+  }
+
+  .system-list p {
+    font-size: 15px;
+    line-height: 1.62;
+    color: var(--ink-2);
+    max-width: 52ch;
+  }
+
+  .notes-band {
+    position: relative;
+    background: var(--ink);
+    color: var(--paper-on-ink);
+    padding-block: clamp(64px, 8vw, 104px);
+    overflow: clip;
+  }
+
+  .notes-band::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(239, 233, 220, 0.14) 1px, transparent 1.2px);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(ellipse 65% 70% at 80% 20%, #000, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 65% 70% at 80% 20%, #000, transparent 75%);
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .notes-band > .wrap {
+    position: relative;
+    z-index: 1;
+  }
+
+  .notes-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+    gap: clamp(28px, 5vw, 80px);
+    align-items: end;
+    margin-bottom: clamp(40px, 5vw, 60px);
+  }
+
+  .notes-band .eyebrow {
+    color: rgba(239, 233, 220, 0.76);
+  }
+
+  .notes-band .eyebrow::before {
+    background: var(--signal);
+  }
+
+  .notes-title {
+    margin-top: 20px;
+    font-size: clamp(2.4rem, 4.6vw, 4.2rem);
+    line-height: 0.96;
+    letter-spacing: -0.05em;
+  }
+
+  .notes-title em {
+    color: var(--signal);
+  }
+
+  .notes-intro {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: rgba(239, 233, 220, 0.78);
+    border-left: 1px solid rgba(239, 233, 220, 0.3);
+    padding-left: 20px;
+    max-width: 38ch;
+  }
+
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-top: 1px solid rgba(239, 233, 220, 0.16);
+    border-left: 1px solid rgba(239, 233, 220, 0.16);
+  }
+
+  .note-card {
+    padding: 26px 28px 30px;
+    border-right: 1px solid rgba(239, 233, 220, 0.16);
+    border-bottom: 1px solid rgba(239, 233, 220, 0.16);
+  }
+
+  .note-index {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    color: var(--signal);
+    margin-bottom: 22px;
+  }
+
+  .note-card h3 {
+    font-size: 1.25rem;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 10px;
+  }
+
+  .note-card p {
+    font-size: 14.5px;
+    line-height: 1.62;
+    color: rgba(239, 233, 220, 0.78);
+    max-width: 44ch;
+  }
+
+  .stack-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 18px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(239, 233, 220, 0.16);
+  }
+
+  .stack-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: rgba(239, 233, 220, 0.7);
+    margin-right: 8px;
+  }
+
+  .notes-band .chip {
+    border-color: rgba(239, 233, 220, 0.34);
+    color: rgba(239, 233, 220, 0.9);
+  }
+
+  .stack-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .stack-note {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(239, 233, 220, 0.66);
+  }
+
+  .case-cta {
+    background: var(--signal);
+    color: var(--ink);
+    padding-block: clamp(56px, 7vw, 88px);
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .case-cta-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 32px;
+  }
+
+  .case-cta .eyebrow {
+    color: rgba(22, 21, 15, 0.82);
+  }
+
+  .case-cta .eyebrow::before {
+    background: var(--ink);
+  }
+
+  .case-cta h2 {
+    margin-top: 18px;
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
+    max-width: 18ch;
+  }
+
+  .case-cta h2 em {
+    color: var(--paper);
+  }
+
+  .case-cta-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .case-cta-btn {
+    background: var(--ink);
+    color: var(--paper-on-ink);
+    border-color: var(--ink);
+  }
+
+  .case-cta-btn:hover {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .case-email {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    border-bottom: 1px solid rgba(22, 21, 15, 0.45);
+    padding-bottom: 2px;
+  }
+
+  .case-email:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .next-project {
+    display: block;
+    background: var(--paper);
+    transition: background-color 0.35s var(--ease), color 0.35s var(--ease);
+  }
+
+  .next-inner {
+    display: grid;
+    grid-template-columns: 150px 40px minmax(0, 1fr) 60px;
+    align-items: center;
+    gap: 24px;
+    padding-block: clamp(40px, 5vw, 64px);
+  }
+
+  .next-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .next-index {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--signal-ink);
+  }
+
+  .next-title {
+    font-size: clamp(1.6rem, 3.6vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .next-arrow {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    font-size: 22px;
+    justify-self: end;
+    transition: background-color 0.3s var(--ease), color 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.3s var(--ease);
+  }
+
+  .next-project:hover {
+    background: var(--ink);
+    color: var(--paper-on-ink);
+  }
+
+  .next-project:hover .next-label {
+    color: rgba(239, 233, 220, 0.72);
+  }
+
+  .next-project:hover .next-index {
+    color: var(--signal);
+  }
+
+  .next-project:hover .next-arrow {
+    background: var(--signal);
+    color: var(--ink);
+    border-color: var(--signal);
+    transform: translate(3px, -3px);
+  }
+
+  @media (max-width: 900px) {
+    .case-body {
+      grid-template-columns: 1fr;
+      gap: 48px;
+    }
+
+    .case-meta {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .case-meta div:nth-child(3) {
+      border-left: 0;
+      padding-left: 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .case-meta div:nth-child(4) {
+      border-top: 1px solid var(--line);
+    }
+
+    .notes-head {
+      grid-template-columns: 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .notes-intro {
+      max-width: 52ch;
+    }
+
+    .stack-note {
+      margin-left: 0;
+      flex-basis: 100%;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .notes-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .next-inner {
+      grid-template-columns: auto 1fr auto;
+      gap: 12px 16px;
+    }
+
+    .next-label {
+      grid-column: 1 / -1;
+    }
+
+    .next-index {
+      grid-row: 2;
+    }
+
+    .next-title {
+      grid-row: 2;
+    }
+
+    .next-arrow {
+      grid-row: 2;
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+    }
+
+    .case-cta-actions {
+      width: 100%;
+    }
+
+    .case-cta-btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .case-meta {
+      grid-template-columns: 1fr;
+    }
+
+    .case-meta div + div {
+      border-left: 0;
+      padding-left: 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .case-meta div {
+      padding-right: 0;
+    }
+
+    .case-topbar {
+      margin-bottom: 42px;
+    }
+  }
+</style>

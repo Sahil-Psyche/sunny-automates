@@ -1,0 +1,384 @@
+---
+import type { FlowEdge, FlowNode, NodeKind } from '../data/projects';
+
+interface Props {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  fig: string;
+  meta: string;
+  caption: string;
+}
+
+const { nodes, edges, fig, meta, caption } = Astro.props;
+
+const byId = new Map(nodes.map((node) => [node.id, node]));
+const incoming = new Set(edges.map((edge) => edge.to));
+const start = nodes.find((node) => !incoming.has(node.id)) ?? nodes[0];
+
+const outgoing = (node: FlowNode) => edges.filter((edge) => edge.from === node.id);
+
+type ChainEntry = {
+  node: FlowNode;
+  viaLabel?: string;
+  viaDashed?: boolean;
+};
+
+type Branch = {
+  label?: string;
+  dashed?: boolean;
+  chain: ChainEntry[];
+};
+
+const main: ChainEntry[] = [];
+const seen = new Set<string>();
+let cursor: FlowNode | undefined = start;
+
+while (cursor && !seen.has(cursor.id)) {
+  seen.add(cursor.id);
+  main.push({ node: cursor });
+
+  const next = outgoing(cursor);
+  if (next.length !== 1) break;
+  cursor = byId.get(next[0].to);
+}
+
+const tail = main[main.length - 1]?.node;
+const tailEdges = tail ? outgoing(tail) : [];
+
+const branches: Branch[] =
+  tailEdges.length > 1
+    ? tailEdges.map((edge) => {
+        const chain: ChainEntry[] = [];
+        let current = byId.get(edge.to);
+        let nextEdge: FlowEdge | undefined = edge;
+        const visited = new Set<string>();
+
+        while (current && !visited.has(current.id)) {
+          visited.add(current.id);
+          const step = nextEdge;
+          chain.push({
+            node: current,
+            viaLabel: chain.length === 0 ? undefined : step?.label,
+            viaDashed: chain.length === 0 ? undefined : step?.dashed,
+          });
+
+          const next = outgoing(current);
+          if (next.length !== 1) break;
+          nextEdge = next[0];
+          current = byId.get(nextEdge.to);
+        }
+
+        return { label: edge.label, dashed: Boolean(edge.dashed), chain };
+      })
+    : [];
+
+const kindLabel: Record<NodeKind, string> = {
+  trigger: 'TRIGGER',
+  action: 'ACTION',
+  ai: 'AI STEP',
+  logic: 'LOGIC',
+  human: 'HUMAN',
+  output: 'OUTPUT',
+};
+---
+
+<figure class="mflow-panel" aria-label={`Workflow diagram: ${fig}`}>
+  <div class="mflow-bar">
+    <span>{fig}</span>
+    <span class="mflow-meta"><i aria-hidden="true"></i>{meta}</span>
+  </div>
+
+  <div class="mflow-body">
+    {main.map((entry, index) => (
+      <Fragment>
+        {index > 0 && <div class="mflow-link" aria-hidden="true"><span></span></div>}
+        <div class:list={['mflow-node', `mflow-node--${entry.node.kind}`]}>
+          <div class="mflow-card">
+            <span class="mflow-tag">{kindLabel[entry.node.kind]}</span>
+            <strong>{entry.node.label}</strong>
+            {entry.node.sub && <em>{entry.node.sub}</em>}
+          </div>
+        </div>
+      </Fragment>
+    ))}
+
+    {branches.length > 0 && (
+      <div class="mflow-fork">
+        {branches.map((branch) => (
+          <div
+            class:list={['mflow-branch', { 'mflow-branch--dashed': branch.dashed }]}
+          >
+            {branch.label && (
+              <span class:list={['mflow-via', { 'mflow-via--dashed': branch.dashed }]}>
+                {branch.label}
+              </span>
+            )}
+
+            {branch.chain.map((entry, index) => (
+              <Fragment>
+                {index > 0 && (
+                  <div
+                    class:list={['mflow-link', { 'mflow-link--dashed': entry.viaDashed }]}
+                    aria-hidden="true"
+                  >
+                    <span></span>
+                  </div>
+                )}
+                {index > 0 && entry.viaLabel && (
+                  <span
+                    class:list={['mflow-via', { 'mflow-via--dashed': entry.viaDashed }]}
+                  >
+                    {entry.viaLabel}
+                  </span>
+                )}
+                <div class:list={['mflow-node', `mflow-node--${entry.node.kind}`]}>
+                  <div class="mflow-card">
+                    <span class="mflow-tag">{kindLabel[entry.node.kind]}</span>
+                    <strong>{entry.node.label}</strong>
+                    {entry.node.sub && <em>{entry.node.sub}</em>}
+                  </div>
+                </div>
+              </Fragment>
+            ))}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <figcaption class="mflow-caption">{caption}</figcaption>
+</figure>
+
+<style>
+  .mflow-panel {
+    display: none;
+    border: 1px solid var(--line-strong);
+    background: var(--paper-raised);
+    box-shadow: 6px 6px 0 rgba(22, 21, 15, 0.06);
+  }
+
+  .mflow-bar,
+  .mflow-caption {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .mflow-bar {
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .mflow-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-align: right;
+    flex: none;
+  }
+
+  .mflow-meta i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--signal);
+    flex: none;
+  }
+
+  .mflow-caption {
+    border-top: 1px solid var(--line);
+    font-size: 9.5px;
+    line-height: 1.5;
+  }
+
+  .mflow-body {
+    padding: 20px 16px 24px;
+  }
+
+  .mflow-node {
+    position: relative;
+  }
+
+  .mflow-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 11px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--paper-raised);
+    overflow: hidden;
+  }
+
+  .mflow-node--trigger .mflow-card {
+    border-color: var(--ink);
+    border-left: 3px solid var(--signal);
+  }
+
+  .mflow-node--ai .mflow-card::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    border-top: 12px solid var(--signal);
+    border-left: 12px solid transparent;
+  }
+
+  .mflow-node--human .mflow-card {
+    border-style: dashed;
+  }
+
+  .mflow-node--output .mflow-card {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+
+  .mflow-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .mflow-node--trigger .mflow-tag,
+  .mflow-node--ai .mflow-tag {
+    color: var(--signal-ink);
+  }
+
+  .mflow-node--output .mflow-tag {
+    color: rgba(239, 233, 220, 0.68);
+  }
+
+  .mflow-card strong {
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .mflow-node--output .mflow-card strong {
+    color: var(--paper-on-ink);
+  }
+
+  .mflow-card em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+
+  .mflow-node--output .mflow-card em {
+    color: rgba(239, 233, 220, 0.72);
+  }
+
+  .mflow-link {
+    position: relative;
+    margin-left: 20px;
+    height: 18px;
+    width: 1px;
+  }
+
+  .mflow-link span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 1px;
+    background: var(--line-strong);
+  }
+
+  .mflow-link span::after {
+    content: '';
+    position: absolute;
+    left: -2px;
+    bottom: -1px;
+    width: 4px;
+    height: 4px;
+    border-right: 1px solid var(--line-strong);
+    border-bottom: 1px solid var(--line-strong);
+    transform: rotate(45deg);
+  }
+
+  .mflow-link--dashed span {
+    background: none;
+    border-left: 1px dashed var(--signal-ink);
+    opacity: 0.8;
+  }
+
+  .mflow-link--dashed span::after {
+    border-color: var(--signal-ink);
+  }
+
+  .mflow-fork {
+    margin-left: 20px;
+  }
+
+  .mflow-branch {
+    position: relative;
+    padding: 16px 0 4px 14px;
+  }
+
+  .mflow-branch::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid var(--line-strong);
+  }
+
+  .mflow-branch:last-child::before {
+    bottom: auto;
+    height: 21px;
+  }
+
+  .mflow-branch::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 21px;
+    width: 14px;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .mflow-branch--dashed::before,
+  .mflow-branch--dashed::after {
+    border-color: var(--signal-ink);
+    border-style: dashed;
+  }
+
+  .mflow-branch--dashed .mflow-via {
+    color: var(--signal-ink);
+  }
+
+  .mflow-via {
+    display: block;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    line-height: 1.2;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .mflow-via--dashed {
+    display: inline-block;
+    padding: 2px 6px;
+    margin-left: 4px;
+    border: 1px dashed var(--signal-ink);
+    border-radius: 2px;
+  }
+
+  @media (max-width: 900px) {
+    .mflow-panel {
+      display: block;
+    }
+  }
+</style>
