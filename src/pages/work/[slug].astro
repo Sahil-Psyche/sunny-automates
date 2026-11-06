@@ -141,6 +141,18 @@ const figLabel = `FIG. ${String(Number(project.index) + 1).padStart(2, '0')} —
           </div>
           <p class="stack-note">Architecture documented end-to-end. Ask for a walkthrough.</p>
         </div>
+
+        {project.slug === 'inbox-triage' && (
+          <div class="artifact-block">
+            <p class="stack-label">Artifact</p>
+            <a class="artifact-link" href="/workflows/inbox-triage.json" download>
+              Download redacted architecture (JSON) ↗
+            </a>
+            <p class="stack-note">
+              Redacted export of the documented flow. Full n8n import + walkthrough on request.
+            </p>
+          </div>
+        )}
       </div>
     </section>
 
@@ -503,6 +515,31 @@ const figLabel = `FIG. ${String(Number(project.index) + 1).padStart(2, '0')} —
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: rgba(239, 233, 220, 0.66);
+  }
+
+  .artifact-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 18px;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(239, 233, 220, 0.16);
+  }
+
+  .artifact-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--paper-on-ink);
+    border-bottom: 1px solid rgba(239, 233, 220, 0.4);
+    padding-bottom: 2px;
+  }
+
+  .artifact-link:hover {
+    color: var(--signal);
+    border-color: var(--signal);
   }
 
   .case-cta {

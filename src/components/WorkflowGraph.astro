@@ -237,6 +237,15 @@ const subSize = (sub: string) => {
     </div>
   </div>
 
+  <div class="kind-legend" aria-label="Node kinds">
+    <span class="kind-legend__item"><i class="kind-swatch kind-swatch--trigger"></i>trigger</span>
+    <span class="kind-legend__item"><i class="kind-swatch kind-swatch--action"></i>action</span>
+    <span class="kind-legend__item"><i class="kind-swatch kind-swatch--ai"></i>ai step</span>
+    <span class="kind-legend__item"><i class="kind-swatch kind-swatch--logic"></i>logic</span>
+    <span class="kind-legend__item"><i class="kind-swatch kind-swatch--human"></i>human</span>
+    <span class="kind-legend__item"><i class="kind-swatch kind-swatch--output"></i>output</span>
+  </div>
+
   <figcaption class="graph-caption">
     <span>{caption}</span>
     <span class="graph-legend">
@@ -500,6 +509,49 @@ const subSize = (sub: string) => {
     margin-left: 8px;
     background-image: linear-gradient(90deg, var(--signal-ink) 45%, transparent 45%);
     background-size: 6px 1px;
+  }
+
+  .kind-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    background: var(--paper);
+  }
+
+  .kind-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .kind-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 8px;
+    border: 1px solid var(--line-strong);
+    background: var(--paper-raised);
+    border-radius: 2px;
+    flex: none;
+  }
+
+  .kind-swatch--trigger { border-color: var(--ink); border-left: 3px solid var(--signal); }
+  .kind-swatch--action { }
+  .kind-swatch--ai { border-color: var(--signal-ink); }
+  .kind-swatch--logic { }
+  .kind-swatch--human { border-style: dashed; border-color: var(--signal-ink); }
+  .kind-swatch--output { background: var(--ink); border-color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flow-pulse { display: none; }
+    .edge-label { opacity: 1; animation: none; }
+    .flow-edge--fade { opacity: 1; animation: none; }
   }
 
   @media (max-width: 900px) {

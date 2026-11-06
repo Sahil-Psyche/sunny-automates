@@ -138,4 +138,8 @@ const paths = edges.map((edge) => {
   :global(.work-row:hover) .mini-pulse {
     fill: var(--paper-on-ink);
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mini-pulse { display: none; }
+  }
 </style>

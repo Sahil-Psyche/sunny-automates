@@ -1,0 +1,36 @@
+{
+  "name": "inbox.triage",
+  "version": "1.0",
+  "status": "reference architecture (redacted)",
+  "note": "Redacted export of the documented architecture. Credentials, account IDs and internal URLs removed. Contact sunnyautomates for a full walkthrough or a sanitized n8n import.",
+  "trigger": "Gmail trigger on a dedicated label (self-sent mail ignored)",
+  "stack": ["n8n", "Gmail", "OpenAI", "Telegram", "Google Sheets"],
+  "nodes": [
+    { "id": "trigger", "kind": "trigger", "label": "Gmail trigger", "sub": "label: inbox" },
+    { "id": "clean", "kind": "action", "label": "Strip the noise", "sub": "quotes · signatures" },
+    { "id": "classify", "kind": "ai", "label": "Classify + summarise", "sub": "urgent / client / admin / noise + confidence" },
+    { "id": "route", "kind": "logic", "label": "Route by class", "sub": "confidence threshold 0.7" },
+    { "id": "telegram", "kind": "output", "label": "Urgent alert", "sub": "Telegram + summary + link" },
+    { "id": "draft", "kind": "output", "label": "Draft reply", "sub": "waits for approval (never auto-sent)" },
+    { "id": "log", "kind": "output", "label": "Sheets log", "sub": "every message" },
+    { "id": "review", "kind": "human", "label": "Human review", "sub": "low confidence (< 0.7)" },
+    { "id": "error", "kind": "output", "label": "Error alert", "sub": "node · error · run link (Telegram)" }
+  ],
+  "edges": [
+    { "from": "trigger", "to": "clean", "animated": true },
+    { "from": "clean", "to": "classify", "animated": true },
+    { "from": "classify", "to": "route", "animated": true },
+    { "from": "route", "to": "telegram", "label": "urgent" },
+    { "from": "route", "to": "draft", "label": "client" },
+    { "from": "route", "to": "log", "label": "all" },
+    { "from": "route", "to": "review", "label": "< 0.7", "dashed": true },
+    { "from": "route", "to": "error", "label": "on fail", "dashed": true }
+  ],
+  "guarantees": [
+    "Idempotent by Gmail message ID (retries cannot double-post)",
+    "Drafts created, never auto-sent (human checkpoint)",
+    "Low-confidence and risky drafts go to a review queue",
+    "Dedicated error workflow posts node, error and run link to Telegram",
+    "Disabling the trigger returns the inbox to normal immediately"
+  ]
+}

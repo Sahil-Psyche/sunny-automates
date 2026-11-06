@@ -1,4 +1,7 @@
 ---
+// MobileFlow assumes a single linear "main" chain followed by one branching point
+// (the last main node has N outgoing edges). Flows with multiple branch points or
+// mid-chain branches will not render correctly — keep flow data in that shape.
 import type { FlowEdge, FlowNode, NodeKind } from '../data/projects';
 
 interface Props {

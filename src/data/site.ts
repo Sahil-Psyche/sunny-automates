@@ -54,5 +54,4 @@ export const stack = [
   'Airtable',
   'Notion',
   'GitHub',
-  'OpenCode',
 ];

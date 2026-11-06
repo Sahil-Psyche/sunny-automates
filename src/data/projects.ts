@@ -107,6 +107,7 @@ export const projects: Project[] = [
         { id: 'draft', label: 'Draft reply', sub: 'waits for approval', col: 4, row: 1, kind: 'output' },
         { id: 'log', label: 'Sheets log', sub: 'every message', col: 4, row: 2, kind: 'output' },
         { id: 'review', label: 'Human review', sub: 'low confidence', col: 4, row: 3, kind: 'human' },
+        { id: 'error', label: 'Error alert', sub: 'node · error · run link', col: 4, row: 4, kind: 'output' },
       ],
       edges: [
         { from: 'trigger', to: 'clean', animated: true },
@@ -116,6 +117,7 @@ export const projects: Project[] = [
         { from: 'route', to: 'draft', label: 'client' },
         { from: 'route', to: 'log', label: 'all' },
         { from: 'route', to: 'review', label: '< 0.7', dashed: true },
+        { from: 'route', to: 'error', label: 'on fail', dashed: true },
       ],
     },
   },
